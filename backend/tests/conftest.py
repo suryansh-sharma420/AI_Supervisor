@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
-from app.database import Base
+from app.database import Base, get_db
+from app.main import app
 from app.models import Activity, Run, Supervisor  # noqa: F401
 
 @pytest.fixture(scope="session")
@@ -25,19 +26,24 @@ async def engine():
     engine = create_async_engine(
         settings.TEST_DATABASE_URL, 
         echo=False,
-        poolclass=NullPool
+        poolclass=NullPool,
+        # Prevent infinite hangs if a database lock occurs
+        connect_args={"command_timeout": 10}
     )
     
+    print("\n[DB SETUP] Connecting to test database...")
     async with engine.begin() as conn:
+        print("[DB SETUP] Resetting test database (drop/create)...")
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     
     yield engine
     
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    
+    # We skip drop_all in teardown because it often hangs on zombie async connections.
+    # The setup phase of the next run will handle the cleanup.
+    print("\n[DB TEARDOWN] Disposing engine...")
     await engine.dispose()
+    print("[DB TEARDOWN] Engine disposed.")
 
 @pytest_asyncio.fixture
 async def db(engine) -> AsyncSession:
@@ -49,9 +55,24 @@ async def db(engine) -> AsyncSession:
     )
     async with session_factory() as session:
         yield session
-        # Transaction is rolled back automatically by context manager on error, 
-        # but we add an explicit rollback to be safe for next tests.
         try:
             await session.rollback()
         except Exception:
             pass
+
+@pytest_asyncio.fixture(autouse=True)
+async def override_get_db(engine):
+    """Override the get_db dependency for all API tests."""
+    session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    
+    async def _get_test_db():
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = _get_test_db
+    yield
+    app.dependency_overrides.clear()

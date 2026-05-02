@@ -32,7 +32,7 @@ async def test_insert_supervisor(db: AsyncSession) -> None:
         available_actions=["notify_customer", "escalate"],
         wake_up_behavior={"default_sleep_minutes": 60},
         wake_aggressiveness="aggressive",
-        model_config={"model": "llama3-8b-8192", "temperature": 0.3},
+        llm_settings={"model": "llama3-8b-8192", "temperature": 0.3},
     )
     db.add(supervisor)
     await db.commit()
@@ -44,7 +44,7 @@ async def test_insert_supervisor(db: AsyncSession) -> None:
     assert supervisor.available_actions == ["notify_customer", "escalate"]
     assert supervisor.wake_up_behavior == {"default_sleep_minutes": 60}
     assert supervisor.wake_aggressiveness == "aggressive"
-    assert supervisor.model_config == {"model": "llama3-8b-8192", "temperature": 0.3}
+    assert supervisor.llm_settings == {"model": "llama3-8b-8192", "temperature": 0.3}
     assert supervisor.created_at is not None
     assert supervisor.updated_at is not None
 
