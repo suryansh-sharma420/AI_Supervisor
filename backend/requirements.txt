@@ -10,3 +10,4 @@ pytest-asyncio
 httpx
 greenlet
 groq
+apscheduler>=3.10.0

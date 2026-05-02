@@ -3,15 +3,19 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from groq import AsyncGroq
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies import get_groq_client
 from app.schemas.run import ActivityResponse, InstructionRequest, RunCreate, RunResponse
 from app.services import run_service, supervisor_service
+from app.services.summary_service import complete_run
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
 DB = Annotated[AsyncSession, Depends(get_db)]
+GroqDep = Annotated[AsyncGroq, Depends(get_groq_client)]
 
 _INTERRUPTIBLE = {"active", "running", "sleeping"}
 
@@ -83,22 +87,13 @@ async def resume_run(run_id: uuid.UUID, db: DB) -> RunResponse:
 
 
 @router.post("/{run_id}/terminate", response_model=RunResponse)
-async def terminate_run(run_id: uuid.UUID, db: DB) -> RunResponse:
+async def terminate_run(run_id: uuid.UUID, db: DB, groq: GroqDep) -> RunResponse:
     run = await run_service.get_run(db, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Run not found")
     if run.status in {"terminated", "completed"}:
         raise HTTPException(status_code=409, detail="Run is already finished")
-    run.status = "terminated"
-    run.completed_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(run)
-    await run_service.create_activity(
-        db, run_id, "system_event", {"event": "run_terminated", "reason": "manual"}
-    )
-    await db.commit()
-    await db.refresh(run)
-    return run
+    return await complete_run(run, db, groq, reason="manual_termination", final_status="terminated")
 
 
 @router.get("/{run_id}/activities", response_model=list[ActivityResponse])

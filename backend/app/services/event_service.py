@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from groq import AsyncGroq
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants import TERMINAL_EVENTS
 from app.schemas.event import EventCreate, EventResponse
 from app.services import classifier as classifier_module
 from app.services.run_service import create_activity, get_run
@@ -24,7 +25,7 @@ async def ingest_event(
     if run.status in {"terminated", "completed"}:
         raise HTTPException(status_code=409, detail="Cannot send events to a finished run")
 
-    # 1. Store the incoming event as an activity record
+    # Store the incoming event as an activity record
     event_activity = await create_activity(
         db,
         run_id,
@@ -32,14 +33,34 @@ async def ingest_event(
         {"event_type": event.event_type, "data": event.data},
     )
 
-    # 2. Get supervisor for wake_aggressiveness
+    # Terminal event detection — bypass classifier, complete the run immediately
+    if event.event_type in TERMINAL_EVENTS:
+        from app.services.summary_service import complete_run
+
+        run.state = {**run.state, "order_status": event.event_type}
+        await complete_run(
+            run,
+            db,
+            groq_client,
+            reason=f"terminal_event:{event.event_type}",
+            final_status="completed",
+        )
+        await db.refresh(event_activity)
+        return EventResponse(
+            event_type=event.event_type,
+            data=event.data,
+            run_id=run_id,
+            wake_decision=True,
+            wake_reason="terminal event, run completed",
+            activity_id=event_activity.id,
+            created_at=event_activity.created_at,
+        )
+
+    # Non-terminal: run classifier
     supervisor = await get_supervisor(db, run.supervisor_id)
     wake_aggressiveness = supervisor.wake_aggressiveness if supervisor else "normal"
-
-    # 3. Get current order_status from run state
     order_status = run.state.get("order_status", "created")
 
-    # 4. Classify
     should_wake, reason, classifier_layer = await classifier_module.classify_event(
         event_type=event.event_type,
         event_data=event.data,
@@ -48,7 +69,6 @@ async def ingest_event(
         groq_client=groq_client,
     )
 
-    # 5. Store wake decision activity
     await create_activity(
         db,
         run_id,
@@ -61,12 +81,10 @@ async def ingest_event(
         },
     )
 
-    # 6. If wake decision and run is sleeping, make it active
     if should_wake and run.status == "sleeping":
         run.status = "active"
         run.wake_at = None
 
-    # 7. Append event to state["events_since_last_wake"]
     events_list = list(run.state.get("events_since_last_wake", []))
     events_list.append(
         {

@@ -76,3 +76,20 @@ async def override_get_db(engine):
     app.dependency_overrides[get_db] = _get_test_db
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def ensure_groq_client_in_app():
+    """Ensure app.state.groq_client exists and returns serializable content."""
+    from unittest.mock import AsyncMock, MagicMock
+    if not hasattr(app.state, "groq_client"):
+        mock = AsyncMock()
+        # Ensure that any LLM calls return a mock structure that results in a string
+        # This prevents SQLAlchemy from trying to save MagicMock objects into JSONB columns
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "Global Mock Summary"
+        mock.chat.completions.create.return_value = mock_resp
+        
+        app.state.groq_client = mock
+    yield

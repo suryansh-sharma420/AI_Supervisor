@@ -30,10 +30,26 @@ This document tracks the major testing hurdles and architectural fixes implement
 **Solution**:
 - Always use `await db.refresh(obj)` before asserting on object states that were modified by an external API call.
 
-## 5. Lifespan & Dependency Overrides
-**Problem**: `AttributeError: 'State' object has no attribute 'groq_client'`.
-**Cause**: Using the modern `lifespan` handler in FastAPI requires explicit initialization of state variables.
+## 5. Phase 4: Reasoning & Tool Execution
+**Problem**: The Agent Trigger returns `iterations: 0` and `terminated_early: true`.
+**Cause**: The agent loop is protected by status guards. It will only run if the status is `active` or `running`.
 **Solution**:
-- Initialized `app.state.groq_client` inside the `lifespan` context manager in `app/main.py`.
-- Ensured all tests use `_override_groq` to mock LLM calls, providing environment consistency and speed.
-- Registered all routers (supervisors, runs, and events) explicitly in `main.py`.
+- If a run is `sleeping`, it means it successfully finished its last cycle. To force it to run again, use a fresh run or ensure the status is reset.
+- Check `GET /api/runs/{id}/activities` to confirm if a previous cycle already completed.
+
+**Problem**: `422 Unprocessable Content` when sending events.
+**Cause**: The `EventCreate` schema uses a strict `Literal` enum for `event_type`.
+**Solution**: Ensure the event name matches the strict vocabulary defined in `app/schemas/event.py` (e.g., use `shipment_delayed` instead of `delay_notification`).
+
+**Problem**: `pydantic_core._pydantic_core.ValidationError` on startup.
+**Cause**: Extra variables in `.env` (like `MISTRAL_API_KEY`) not defined in the `Settings` class when `extra="forbid"` is active (default).
+**Solution**: Added `extra="ignore"` to `SettingsConfigDict` in `app/config.py` to allow flexible environment configuration without crashing the app.
+
+## Phase 6: Final Stabilization
+**Problem**: `AttributeError: 'State' object has no attribute 'groq_client'` in older tests.
+**Cause**: Endpoints now depend on a global Groq client that might not be initialized in simple API tests using `ASGITransport`.
+**Solution**: Added a global `ensure_groq_client_in_app` autouse fixture in `conftest.py` to provide a safety mock.
+
+**Problem**: `StatementError` when saving final summaries in tests.
+**Cause**: The Groq mock was returning a `MagicMock` object for the message content, which SQLAlchemy cannot serialize into a JSONB column.
+**Solution**: Configured the mock in `conftest.py` to return a static string (`"Global Mock Summary"`) for all LLM calls.
