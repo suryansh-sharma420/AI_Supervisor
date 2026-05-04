@@ -53,6 +53,17 @@ async def add_instruction(run_id: uuid.UUID, body: InstructionRequest, db: DB) -
     return await run_service.add_instruction(db, run_id, body.instruction)
 
 
+@router.delete("/{run_id}/instructions/{index}", response_model=RunResponse)
+async def remove_instruction(run_id: uuid.UUID, index: int, db: DB) -> RunResponse:
+    run = await run_service.get_run(db, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    res = await run_service.remove_instruction(db, run_id, index)
+    if res is None:
+        raise HTTPException(status_code=404, detail="Instruction not found")
+    return res
+
+
 @router.post("/{run_id}/interrupt", response_model=RunResponse)
 async def interrupt_run(run_id: uuid.UUID, db: DB) -> RunResponse:
     run = await run_service.get_run(db, run_id)

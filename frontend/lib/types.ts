@@ -19,6 +19,7 @@ export interface RunState {
   custom_instructions: string[]
   events_since_last_wake: any[]
   last_action?: string
+  last_error?: string
 }
 
 export interface Run {

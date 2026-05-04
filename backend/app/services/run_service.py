@@ -95,6 +95,23 @@ async def add_instruction(
     return run
 
 
+async def remove_instruction(
+    db: AsyncSession, run_id: uuid.UUID, index: int
+) -> Run | None:
+    run = await get_run(db, run_id)
+    if run is None:
+        return None
+    instructions = list(run.state.get("custom_instructions", []))
+    if 0 <= index < len(instructions):
+        removed = instructions.pop(index)
+        run.state = {**run.state, "custom_instructions": instructions}
+        await db.flush()
+        await create_activity(db, run_id, "system_event", {"event": "instruction_removed", "instruction": removed})
+        await db.commit()
+        await db.refresh(run)
+    return run
+
+
 async def get_activities(db: AsyncSession, run_id: uuid.UUID) -> list[Activity]:
     result = await db.execute(
         select(Activity)

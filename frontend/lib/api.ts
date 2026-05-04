@@ -82,6 +82,11 @@ export const addInstruction = (run_id: string, instruction: string): Promise<Run
     body: JSON.stringify({ instruction }),
   })
 
+export const removeInstruction = (run_id: string, index: number): Promise<Run> =>
+  request(`/api/runs/${run_id}/instructions/${index}`, {
+    method: 'DELETE',
+  })
+
 // --- Health ---
 export const getHealth = (): Promise<{ status: string; environment: string }> =>
   request('/health')

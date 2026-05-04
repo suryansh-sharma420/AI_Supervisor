@@ -5,9 +5,10 @@ import type { Run } from '@/lib/types'
 interface Props {
   run: Run
   onAddInstruction: (instruction: string) => Promise<void>
+  onRemoveInstruction: (index: number) => Promise<void>
 }
 
-export function RuntimeInstructions({ run, onAddInstruction }: Props) {
+export function RuntimeInstructions({ run, onAddInstruction, onRemoveInstruction }: Props) {
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,9 +37,17 @@ export function RuntimeInstructions({ run, onAddInstruction }: Props) {
           {instructions.map((instr, i) => (
             <span
               key={i}
-              className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs"
+              className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs flex items-center gap-1"
             >
               {instr}
+              <button 
+                onClick={() => onRemoveInstruction(i)}
+                className="hover:bg-blue-100 rounded-full p-0.5"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </span>
           ))}
         </div>

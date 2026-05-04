@@ -5,6 +5,7 @@ import {
   addInstruction as apiAddInstruction,
   getSupervisor,
   interruptRun,
+  removeInstruction as apiRemoveInstruction,
   resumeRun,
   sendEvent,
   terminateRun,
@@ -101,6 +102,11 @@ export default function RunDetailPage({ params }: { params: { run_id: string } }
             onAddInstruction={async (instr) => {
               await apiAddInstruction(run_id, instr)
               toast('success', 'Instruction added')
+              refreshRun()
+            }}
+            onRemoveInstruction={async (index) => {
+              await apiRemoveInstruction(run_id, index)
+              toast('success', 'Instruction removed')
               refreshRun()
             }}
           />

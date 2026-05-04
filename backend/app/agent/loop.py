@@ -49,10 +49,10 @@ async def execute_agent_cycle(
         summary["terminated_early"] = True
         return summary
 
-    # Mark as running and increment iteration count
+    # Mark as running and increment iteration count, clear last error
     run.status = "running"
     iteration_count = int(run.state.get("iteration_count", 0)) + 1
-    run.state = {**run.state, "iteration_count": iteration_count}
+    run.state = {**run.state, "iteration_count": iteration_count, "last_error": None}
     await db.commit()
     await db.refresh(run)
 
@@ -212,16 +212,16 @@ async def execute_agent_cycle(
             "system_event",
             {"event": "agent_error", "error": str(exc)},
         )
-        wake_at = datetime.now(timezone.utc) + timedelta(minutes=_DEFAULT_SLEEP_ERROR_MINUTES)
+        # Preserve events so we can retry, and sleep for a short duration (2 mins)
+        error_sleep = 2 
+        wake_at = datetime.now(timezone.utc) + timedelta(minutes=error_sleep)
         run.status = "sleeping"
         run.wake_at = wake_at
-        run.state = {
-            **run.state,
-            "events_since_last_wake": [],
-        }
+        # IMPORTANT: We DO NOT clear events_since_last_wake here so the next attempt sees them
+        run.state = {**run.state, "last_error": str(exc)}
         await db.commit()
         summary["slept"] = True
-        summary["sleep_duration_minutes"] = _DEFAULT_SLEEP_ERROR_MINUTES
+        summary["sleep_duration_minutes"] = error_sleep
         summary["terminated_early"] = True
         return summary
 
