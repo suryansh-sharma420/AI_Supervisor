@@ -17,6 +17,7 @@ class SupervisorCreate(BaseModel):
     ]
     wake_up_behavior: dict | None = None
     wake_aggressiveness: Literal["conservative", "normal", "aggressive"] = "normal"
+    default_sleep_minutes: int = 60
     llm_settings: dict | None = None
 
     @field_validator("name")
@@ -43,6 +44,7 @@ class SupervisorResponse(BaseModel):
     available_actions: list[str]
     wake_up_behavior: dict | None
     wake_aggressiveness: str
+    default_sleep_minutes: int
     llm_settings: dict | None
     created_at: datetime
     updated_at: datetime
@@ -54,6 +56,7 @@ class SupervisorUpdate(BaseModel):
     available_actions: Optional[list[str]] = None
     wake_up_behavior: Optional[dict] = None
     wake_aggressiveness: Optional[Literal["conservative", "normal", "aggressive"]] = None
+    default_sleep_minutes: Optional[int] = None
     llm_settings: Optional[dict] = None
 
     @model_validator(mode="after")

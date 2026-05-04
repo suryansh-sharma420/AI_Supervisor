@@ -1,6 +1,8 @@
 """
 Groq-compatible tool definitions for the order supervisor agent.
 """
+import json
+import uuid
 
 BUSINESS_ACTION_TOOLS = [
     "message_fulfillment_team",
@@ -166,8 +168,22 @@ AVAILABLE_TOOLS: list[dict] = [
 _TOOL_MAP: dict[str, dict] = {t["function"]["name"]: t for t in AVAILABLE_TOOLS}
 
 
-def get_tools_for_supervisor(available_actions: list[str]) -> list[dict]:
+def get_tools_for_supervisor(available_actions: list[str], default_sleep_minutes: int = 60) -> list[dict]:
     """Return tool dicts for the given actions, always including sleep and update_state."""
     always_included = {"sleep", "update_state"}
     requested = set(available_actions) | always_included
-    return [t for t in AVAILABLE_TOOLS if t["function"]["name"] in requested]
+    
+    tools = []
+    for t in AVAILABLE_TOOLS:
+        name = t["function"]["name"]
+        if name in requested:
+            # Deep copy or rebuild to avoid mutating global AVAILABLE_TOOLS
+            tool_copy = json.loads(json.dumps(t))
+            if name == "sleep":
+                tool_copy["function"]["description"] = (
+                    f"Stop processing and sleep until the next scheduled check. "
+                    f"The DEFAULT duration for this supervisor is {default_sleep_minutes} minutes. "
+                    f"You MUST call this when you have finished all actions for this cycle."
+                )
+            tools.append(tool_copy)
+    return tools

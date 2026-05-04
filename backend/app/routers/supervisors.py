@@ -43,11 +43,6 @@ async def update_supervisor(
 
 @router.delete("/{supervisor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_supervisor(supervisor_id: uuid.UUID, db: DB) -> None:
-    supervisor = await supervisor_service.get_supervisor(db, supervisor_id)
-    if supervisor is None:
+    success = await supervisor_service.delete_supervisor(db, supervisor_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Supervisor not found")
-    if await supervisor_service.has_active_runs(db, supervisor_id):
-        raise HTTPException(
-            status_code=409, detail="Cannot delete supervisor with active runs"
-        )
-    await supervisor_service.delete_supervisor(db, supervisor_id)

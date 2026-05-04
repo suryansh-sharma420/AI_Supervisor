@@ -5,6 +5,7 @@ export interface Supervisor {
   available_actions: string[]
   wake_up_behavior: Record<string, any> | null
   wake_aggressiveness: 'conservative' | 'normal' | 'aggressive'
+  default_sleep_minutes: number
   llm_settings: Record<string, any> | null
   created_at: string
   updated_at: string
@@ -57,7 +58,8 @@ export interface SupervisorCreate {
   base_instruction: string
   available_actions: string[]
   wake_aggressiveness: 'conservative' | 'normal' | 'aggressive'
-  wake_up_behavior?: { default_sleep_minutes: number }
+  default_sleep_minutes: number
+  wake_up_behavior?: Record<string, any>
   llm_settings?: { model: string }
 }
 

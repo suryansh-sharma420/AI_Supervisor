@@ -67,8 +67,10 @@ async def execute_agent_cycle(
         await db.refresh(run)
 
     # Build prompts
+    dynamic_sleep = supervisor.default_sleep_minutes if supervisor else _DEFAULT_SLEEP_MINUTES
     system_prompt = build_system_prompt(
-        supervisor.base_instruction if supervisor else "Supervise orders carefully."
+        supervisor.base_instruction if supervisor else "Supervise orders carefully.",
+        dynamic_sleep
     )
     user_prompt = build_user_prompt(run, run.state.get("events_since_last_wake", []))
 
@@ -77,7 +79,8 @@ async def execute_agent_cycle(
     model = llm_settings.get("model", settings.GROQ_AGENT_MODEL)
 
     tools = get_tools_for_supervisor(
-        supervisor.available_actions if supervisor else []
+        supervisor.available_actions if supervisor else [],
+        dynamic_sleep
     )
 
     messages: list[dict] = [
@@ -152,7 +155,7 @@ async def execute_agent_cycle(
                     )
 
                 elif tool_name == "sleep":
-                    duration_minutes = int(tool_args.get("duration_minutes", _DEFAULT_SLEEP_MINUTES))
+                    duration_minutes = int(tool_args.get("duration_minutes", dynamic_sleep))
                     reason = tool_args.get("reason", "")
                     next_check_focus = tool_args.get("next_check_focus", "")
 
@@ -222,9 +225,10 @@ async def execute_agent_cycle(
         summary["terminated_early"] = True
         return summary
 
-    # Loop exited without sleep — apply default sleep
-    logger.warning("Agent for run %s did not call sleep(); applying default %d-minute sleep", run_id, _DEFAULT_SLEEP_MINUTES)
-    wake_at = datetime.now(timezone.utc) + timedelta(minutes=_DEFAULT_SLEEP_MINUTES)
+    # Loop exited without sleep — apply default sleep from supervisor
+    dynamic_default = supervisor.default_sleep_minutes if supervisor else _DEFAULT_SLEEP_MINUTES
+    logger.warning("Agent for run %s did not call sleep(); applying default %d-minute sleep", run_id, dynamic_default)
+    wake_at = datetime.now(timezone.utc) + timedelta(minutes=dynamic_default)
     run.status = "sleeping"
     run.wake_at = wake_at
     run.state = {**run.state, "events_since_last_wake": []}
@@ -233,13 +237,13 @@ async def execute_agent_cycle(
         run_id,
         "sleep_decision",
         {
-            "duration_minutes": _DEFAULT_SLEEP_MINUTES,
-            "reason": "agent did not call sleep, defaulting to 60 minute sleep",
+            "duration_minutes": dynamic_default,
+            "reason": f"agent did not call sleep, defaulting to {dynamic_default} minute sleep from supervisor config",
             "next_check_focus": "",
             "wake_at": wake_at.isoformat(),
         },
     )
     await db.commit()
     summary["slept"] = True
-    summary["sleep_duration_minutes"] = _DEFAULT_SLEEP_MINUTES
+    summary["sleep_duration_minutes"] = dynamic_default
     return summary

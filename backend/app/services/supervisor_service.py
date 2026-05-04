@@ -41,11 +41,13 @@ async def update_supervisor(
     return supervisor
 
 
-async def has_active_runs(db: AsyncSession, supervisor_id: uuid.UUID) -> bool:
+from fastapi import HTTPException
+
+async def has_any_runs(db: AsyncSession, supervisor_id: uuid.UUID) -> bool:
+    """Checks if ANY runs exist for this supervisor (historical or active)."""
     result = await db.execute(
         select(Run.id)
         .where(Run.supervisor_id == supervisor_id)
-        .where(Run.status.in_(_ACTIVE_STATUSES))
         .limit(1)
     )
     return result.scalar_one_or_none() is not None
@@ -55,6 +57,13 @@ async def delete_supervisor(db: AsyncSession, supervisor_id: uuid.UUID) -> bool:
     supervisor = await get_supervisor(db, supervisor_id)
     if supervisor is None:
         return False
+    
+    if await has_any_runs(db, supervisor_id):
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete supervisor with existing runs. Supervisors are retained for historical record."
+        )
+
     await db.delete(supervisor)
     await db.commit()
     return True

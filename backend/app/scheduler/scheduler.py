@@ -22,6 +22,14 @@ def start_scheduler(app) -> None:
         replace_existing=True,
         kwargs={"app": app},
     )
+    scheduler.add_job(
+        jobs.process_active_runs,
+        trigger="interval",
+        seconds=60,
+        id="process_active_runs",
+        replace_existing=True,
+        kwargs={"app": app},
+    )
     scheduler.start()
 
 

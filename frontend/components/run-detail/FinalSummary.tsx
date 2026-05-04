@@ -1,3 +1,4 @@
+import ReactMarkdown from 'react-markdown'
 import type { Activity, Run } from '@/lib/types'
 import { formatDuration, formatTimestamp } from '@/lib/utils'
 
@@ -29,8 +30,8 @@ export function FinalSummary({ run, activities }: Props) {
 
         <div>
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Outcome</span>
-          <div className="mt-1 text-gray-700 whitespace-pre-line leading-relaxed bg-gray-50 rounded-md p-3 text-xs">
-            {run.final_summary}
+          <div className="mt-1 text-gray-700 leading-relaxed bg-gray-50 rounded-md p-4 text-sm markdown-content">
+            <ReactMarkdown>{run.final_summary}</ReactMarkdown>
           </div>
         </div>
 

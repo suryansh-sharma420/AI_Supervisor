@@ -1,4 +1,5 @@
 'use client'
+import ReactMarkdown from 'react-markdown'
 import type { Activity } from '@/lib/types'
 import { formatRelativeTime } from '@/lib/utils'
 
@@ -90,10 +91,14 @@ function ActivityContent({ activity }: { activity: Activity }) {
         <div className="text-sm">
           <strong className="text-blue-700 font-mono">{payload.action}</strong>
           {(payload.parameters?.message || payload.parameters?.note) && (
-            <p className="text-gray-700 mt-0.5">{payload.parameters?.message || payload.parameters?.note}</p>
+            <div className="text-gray-700 mt-1 markdown-content prose-sm">
+              <ReactMarkdown>{payload.parameters?.message || payload.parameters?.note}</ReactMarkdown>
+            </div>
           )}
           {payload.reasoning && (
-            <p className="text-gray-400 italic text-xs mt-0.5">{payload.reasoning}</p>
+            <div className="text-gray-400 italic text-xs mt-1 border-t border-gray-50 pt-1">
+              <ReactMarkdown>{payload.reasoning}</ReactMarkdown>
+            </div>
           )}
         </div>
       )
@@ -113,7 +118,9 @@ function ActivityContent({ activity }: { activity: Activity }) {
       return (
         <div className="bg-teal-50 border border-teal-200 rounded-md p-3 w-full">
           <div className="font-semibold text-teal-800 mb-1">✓ Run Complete</div>
-          <div className="text-xs text-teal-700 whitespace-pre-line">{payload.summary}</div>
+          <div className="text-xs text-teal-700 markdown-content">
+            <ReactMarkdown>{payload.summary}</ReactMarkdown>
+          </div>
         </div>
       )
     default:

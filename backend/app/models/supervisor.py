@@ -19,6 +19,7 @@ class Supervisor(Base):
     available_actions: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="[]")
     wake_up_behavior: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     wake_aggressiveness: Mapped[str] = mapped_column(String(50), nullable=False, server_default="normal")
+    default_sleep_minutes: Mapped[int] = mapped_column(nullable=False, server_default="60")
     llm_settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

@@ -108,3 +108,28 @@ async def enforce_max_run_age(app) -> None:
                 )
         except Exception as exc:
             logger.warning("Scheduler: error terminating run %s: %s", run.id, exc)
+
+
+async def process_active_runs(app) -> None:
+    """Scans for runs in 'active' status and kicks off their agent cycle."""
+    logger.info("Scheduler: checking for active runs")
+    
+    async with app.state.async_session_factory() as db:
+        from app.models.run import Run
+        result = await db.execute(
+            select(Run).where(Run.status == "active")
+        )
+        runs = result.scalars().all()
+
+    processed = 0
+    for run in runs:
+        try:
+            async with app.state.async_session_factory() as db:
+                # We use a fresh session per run to ensure isolation
+                await execute_agent_cycle(run.id, db, app.state.groq_client)
+                processed += 1
+        except Exception as exc:
+            logger.warning("Scheduler: error processing active run %s: %s", run.id, exc)
+
+    if processed > 0:
+        logger.info("Scheduler: %d active runs processed", processed)

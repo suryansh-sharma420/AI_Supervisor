@@ -24,13 +24,13 @@ import { EventInjector } from '@/components/run-detail/EventInjector'
 import { FinalSummary } from '@/components/run-detail/FinalSummary'
 import { useToast } from '@/components/ui/Toast'
 
-export default function RunDetailPage({ params }: { params: Promise<{ run_id: string }> }) {
-  const { run_id } = use(params)
+export default function RunDetailPage({ params }: { params: { run_id: string } }) {
+  const { run_id } = params
   const router = useRouter()
   const { toast } = useToast()
 
-  const { run, loading: runLoading, error: runError, refresh: refreshRun } = useRun(run_id)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const { run, loading: runLoading, error: runError, refresh: refreshRun } = useRun(run_id, autoRefresh)
   const { activities, loading: actLoading, refresh: refreshActivities } = useActivities(run_id, autoRefresh)
   const [supervisor, setSupervisor] = useState<Supervisor | null>(null)
 

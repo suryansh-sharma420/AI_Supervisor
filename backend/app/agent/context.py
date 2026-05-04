@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from app.models.run import Run
 
 
-def build_system_prompt(supervisor_base_instruction: str) -> str:
+def build_system_prompt(supervisor_base_instruction: str, default_sleep_minutes: int) -> str:
     return f"""You are an AI order supervisor agent for an e-commerce order management system.
 
 Your primary instruction from the supervisor configuration:
@@ -24,6 +24,11 @@ Your responsibilities:
 - Keep the customer informed when directly relevant
 - Create internal notes to document your reasoning
 - Update the order state to reflect your assessment
+- END every cycle by calling sleep()
+
+Sleep Configuration:
+- The default sleep duration for this supervisor is {default_sleep_minutes} minutes.
+- You should use this duration unless you have a strong reason to check back sooner (e.g., waiting for a high-priority update) or later.
 
 Rules:
 - Always include reasoning in every tool call so humans can audit your decisions

@@ -33,7 +33,7 @@ export function SupervisorDrawer({ open, supervisor, onClose, onSave }: Props) {
       setBaseInstruction(supervisor.base_instruction)
       setActions(supervisor.available_actions)
       setAggressiveness(supervisor.wake_aggressiveness)
-      setSleepMinutes(supervisor.wake_up_behavior?.default_sleep_minutes ?? 60)
+      setSleepMinutes(supervisor.default_sleep_minutes ?? 60)
       setModel(supervisor.llm_settings?.model ?? 'llama-3.3-70b-versatile')
     } else {
       setName('')
@@ -63,7 +63,7 @@ export function SupervisorDrawer({ open, supervisor, onClose, onSave }: Props) {
         base_instruction: baseInstruction.trim(),
         available_actions: actions,
         wake_aggressiveness: aggressiveness,
-        wake_up_behavior: { default_sleep_minutes: sleepMinutes },
+        default_sleep_minutes: sleepMinutes,
         llm_settings: { model },
       })
       onClose()
